@@ -1,0 +1,8 @@
+{
+  "short_name": "HVAC PR Tool",
+  "name": "HVAC Procurement Risk Analyser",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#1a365d",
+  "background_color": "#f0f4f8"
+}
