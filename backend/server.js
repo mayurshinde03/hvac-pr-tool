@@ -5,8 +5,19 @@ const mongoose = require("mongoose");
 const PRAnalysis = require("./models/PRAnalysis");
 
 const app = express();
-app.use(cors());
+
+// ✅ Updated CORS — allows both local and Render frontend
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    /\.onrender\.com$/,          // covers any onrender.com subdomain
+  ],
+  methods: ["GET", "POST"],
+  credentials: true,
+}));
+
 app.use(express.json());
+
 
 // ─── MongoDB Connection ────────────────────────────────────────────────────────
 
