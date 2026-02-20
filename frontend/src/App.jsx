@@ -13,6 +13,9 @@ const INITIAL = {
   historical_win_probability: 0.72,
 };
 
+// ✅ Reads from env variable in production, falls back to empty string (proxy) in dev
+const BASE_URL = process.env.REACT_APP_API_URL || "";
+
 export default function App() {
   const [form, setForm] = useState(INITIAL);
   const [result, setResult] = useState(null);
@@ -32,10 +35,10 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await axios.post("/api/analyze-pr", form);
+      const { data } = await axios.post(`${BASE_URL}/api/analyze-pr`, form); // ✅ Updated
       if (data.success) setResult(data.data);
     } catch (err) {
-      setError("Server error. Make sure the backend is running on port 5000.");
+      setError("Server error. Make sure the backend is running.");
     } finally {
       setLoading(false);
     }
