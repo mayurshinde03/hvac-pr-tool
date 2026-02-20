@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // ✅ Fixed
 
 async function generatePRAnalysis(data) {
   const {
@@ -14,7 +14,6 @@ async function generatePRAnalysis(data) {
 
   const prompt = `
 You are an expert HVAC procurement advisor for a construction engineering company.
-
 Analyse this Purchase Request and give a professional recommendation to the director.
 
 PROJECT DETAILS:
@@ -32,13 +31,13 @@ PROJECT DETAILS:
 - Budget Overrun: ${is_overrun ? "YES — CRITICAL" : "No"}
 - Suggested Effort: ${effort_level}
 
-Respond in this exact JSON format:
+Respond in this exact JSON format only, no extra text:
 {
   "short_recommendation": "One sentence summary for the director (max 20 words)",
   "detailed_analysis": "2-3 sentences explaining risk, budget situation, and procurement advice",
   "action_items": ["action 1", "action 2", "action 3"],
-  "risk_flags": ["flag 1", "flag 2"] or [],
-  "confidence": "High" or "Medium" or "Low"
+  "risk_flags": ["flag 1", "flag 2"],
+  "confidence": "High"
 }
 
 Be concise, professional, and specific to HVAC/MEP procurement context.
@@ -49,7 +48,7 @@ Be concise, professional, and specific to HVAC/MEP procurement context.
     const text = result.response.text();
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) return JSON.parse(jsonMatch[0]);
-    throw new Error("Invalid Gemini response format");
+    throw new Error("Invalid response format");
   } catch (err) {
     console.error("❌ Gemini error:", err.message);
     return null;
@@ -77,7 +76,7 @@ Give a direct, professional answer in 2-4 sentences. Be specific to HVAC/MEP pro
     return result.response.text();
   } catch (err) {
     console.error("❌ Gemini follow-up error:", err.message);
-    return "Unable to generate response. Please try again.";
+    return "Unable to generate a response. Please try again.";
   }
 }
 
