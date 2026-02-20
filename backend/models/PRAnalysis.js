@@ -18,7 +18,14 @@ const PRSchema = new mongoose.Schema({
   ai_recommendation:          String,
   is_overrun:                 Boolean,
   overrun_amount:             Number,
-  generated_at:               { type: Date, default: Date.now },
+  ai_insights: {
+    short_recommendation: String,
+    detailed_analysis:    String,
+    action_items:         [String],
+    risk_flags:           [String],
+    confidence:           String,
+  },
+  generated_at: { type: Date, default: Date.now },
 }, { timestamps: true });
 
 module.exports = mongoose.model("PRAnalysis", PRSchema);

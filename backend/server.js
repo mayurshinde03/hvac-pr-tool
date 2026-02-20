@@ -3,21 +3,21 @@ const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const PRAnalysis = require("./models/PRAnalysis");
+const { generatePRAnalysis, askFollowUp } = require("./services/gemini");
 
 const app = express();
 
-// ✅ Updated CORS — allows both local and Render frontend
+// ✅ CORS
 app.use(cors({
   origin: [
     "http://localhost:3000",
-    /\.onrender\.com$/,          // covers any onrender.com subdomain
+    /\.onrender\.com$/,
   ],
   methods: ["GET", "POST"],
   credentials: true,
 }));
 
 app.use(express.json());
-
 
 // ─── MongoDB Connection ────────────────────────────────────────────────────────
 
@@ -103,7 +103,7 @@ function getRecommendation(data, remainingBudget) {
   };
 }
 
-// ─── POST: Analyse PR + Save to MongoDB ───────────────────────────────────────
+// ─── POST: Analyse PR + Gemini AI + Save to MongoDB ───────────────────────────
 
 app.post("/api/analyze-pr", async (req, res) => {
   try {
@@ -140,14 +140,23 @@ app.post("/api/analyze-pr", async (req, res) => {
       overrun_amount:             remainingBudget < 0 ? Math.abs(remainingBudget) : 0,
       effort_level:               recommendation.effort,
       ai_recommendation:          recommendation.message,
-      generated_at:               new Date(), // ✅ Fixed — was toLocaleString()
+      generated_at:               new Date(),
     };
 
+    // ── Gemini AI Insights (non-blocking — fallback if fails) ──
+    const aiInsights = await generatePRAnalysis(result);
+    if (aiInsights) {
+      result.ai_insights = aiInsights;
+      console.log(`✨ Gemini insights generated | Confidence: ${aiInsights.confidence}`);
+    } else {
+      console.log("⚠️ Gemini unavailable — using rule-based fallback");
+    }
+
+    // ── Save to MongoDB ──
     const saved = new PRAnalysis(result);
     await saved.save();
     console.log(`💾 Saved PR: ${project_name} | Risk: ${riskLevel}`);
 
-    // Send formatted date to frontend
     res.json({
       success: true,
       data: {
@@ -157,6 +166,24 @@ app.post("/api/analyze-pr", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Analyse PR error:", err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── POST: Ask AI Follow-up ────────────────────────────────────────────────────
+
+app.post("/api/ask-ai", async (req, res) => {
+  try {
+    const { context, question } = req.body;
+    if (!question?.trim()) {
+      return res.status(400).json({ success: false, error: "Question is required" });
+    }
+
+    console.log(`💬 Ask AI: "${question}" for project: ${context?.project_name}`);
+    const answer = await askFollowUp(context, question);
+    res.json({ success: true, answer });
+  } catch (err) {
+    console.error("❌ Ask AI error:", err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -191,7 +218,11 @@ app.get("/api/stats", async (req, res) => {
 // ─── GET: Health Check ─────────────────────────────────────────────────────────
 
 app.get("/health", (_, res) =>
-  res.json({ status: "ok", db: mongoose.connection.readyState === 1 ? "connected" : "disconnected" })
+  res.json({
+    status: "ok",
+    db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    gemini: !!process.env.GEMINI_API_KEY ? "configured" : "missing",
+  })
 );
 
 // ─── Start Server ──────────────────────────────────────────────────────────────
